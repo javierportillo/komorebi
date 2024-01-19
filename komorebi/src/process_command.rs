@@ -18,6 +18,7 @@ use color_eyre::Result;
 use miow::pipe::connect;
 use net2::TcpStreamExt;
 use parking_lot::Mutex;
+use schemars::gen::SchemaSettings;
 use schemars::schema_for;
 use uds_windows::UnixStream;
 
@@ -1278,7 +1279,14 @@ impl WindowManager {
                 stream.write_all(schema.as_bytes())?;
             }
             SocketMessage::StaticConfigSchema => {
-                let socket_message = schema_for!(StaticConfig);
+                let settings = SchemaSettings::default().with(|s| {
+                    s.option_nullable = false;
+                    s.option_add_null_type = false;
+                    s.inline_subschemas = true;
+                });
+
+                let gen = settings.into_generator();
+                let socket_message = gen.into_root_schema_for::<StaticConfig>();
                 let schema = serde_json::to_string_pretty(&socket_message)?;
                 let socket = DATA_DIR.join("komorebic.sock");
 
